@@ -25,8 +25,11 @@
     const clone = item.cloneNode(true);
     clone.setAttribute("aria-hidden", "true");
     clone.inert = true;
+    // clones only exist to pad past the real array's start/end for the loop
+    // wraparound — they're always off-screen on first paint, so they should
+    // never compete for bandwidth with what's actually visible on load
     const img = clone.querySelector("img");
-    if (img) img.loading = "eager";
+    if (img) img.loading = "lazy";
     return clone;
   }
 
