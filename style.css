@@ -82,7 +82,6 @@ img {
 
 .hero__title {
   color: var(--color-text-primary);
-  margin-bottom: -0.3rem;
 }
 
 .hero__subtitle {
@@ -144,13 +143,17 @@ img {
 .pitch {
   width: var(--content-width);
   margin-top: 2rem;
-  color: var(--color-text-secondary);
+  color: var(--color-text-tertiary);
   text-wrap: pretty;
+}
+
+.pitch__highlight {
+  color: var(--color-text-primary);
 }
 
 .cta {
   width: max-content;
-  padding: 0.45rem 0.85rem;
+  padding: 0.5rem 0.9rem;
   border: none;
   border-radius: 999px;
   background: var(--color-cta-bg);
@@ -237,8 +240,8 @@ img {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.25rem;
-  height: 2.25rem;
+  width: 2.35rem;
+  height: 2.35rem;
   border-radius: 50%;
   background: rgba(0, 0, 0);
   backdrop-filter: blur(14px);

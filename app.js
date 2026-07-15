@@ -20,6 +20,8 @@
   const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const SLIDE_DURATION = reduceMotion ? 1 : 550;
   const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const DRAG_THRESHOLD = 6;
+  const SNAP_THRESHOLD_RATIO = 0.15;
 
   function makeClone(item) {
     const clone = item.cloneNode(true);
@@ -30,6 +32,12 @@
     // never compete for bandwidth with what's actually visible on load
     const img = clone.querySelector("img");
     if (img) img.loading = "lazy";
+    const video = clone.querySelector("video");
+    if (video) {
+      video.pause();
+      video.removeAttribute("autoplay");
+      video.preload = "none";
+    }
     return clone;
   }
 
@@ -40,6 +48,37 @@
   let itemWidth = 0;
   let itemStep = 0;
   let isAnimating = false;
+  let videoObserver = null;
+
+  function syncVideos() {
+    if (reduceMotion) {
+      videoObserver?.disconnect();
+      videoObserver = null;
+      for (const item of items) {
+        for (const video of item.querySelectorAll("video")) video.pause();
+      }
+      return;
+    }
+
+    if (!videoObserver) {
+      videoObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            for (const video of entry.target.querySelectorAll("video")) {
+              if (entry.isIntersecting) video.play().catch(() => {});
+              else video.pause();
+            }
+          }
+        },
+        { root: section, threshold: 0 }
+      );
+    }
+
+    videoObserver.disconnect();
+    for (const item of items) {
+      videoObserver.observe(item);
+    }
+  }
 
   // build enough clone padding on each side to cover however many neighbor
   // slides peek into view at the current viewport width, so the track never
@@ -74,6 +113,7 @@
     index = bufferCount + realIndex;
     isAnimating = false;
     setPosition(false);
+    syncVideos();
   }
 
   function computeX() {
@@ -124,27 +164,34 @@
   buildLoop();
 
   if (canHover) {
-    // desktop: tap zones + a cursor-replacing nav button
-    section.addEventListener("click", (event) => {
+    // desktop: a plain click still navigates by half clicked, but pressing
+    // and moving drags the track directly (same physics as touch) — the
+    // cursor-replacing button swaps to a two-way icon for the duration
+    const prevIcon = cursorNav?.querySelector(".cursor-nav__icon--prev");
+    const nextIcon = cursorNav?.querySelector(".cursor-nav__icon--next");
+    const dragIcon = cursorNav?.querySelector(".cursor-nav__icon--drag");
+    let isLeftSide = null;
+    let drag = null;
+
+    function updateSide(clientX) {
       const rect = section.getBoundingClientRect();
-      const isLeftHalf = event.clientX - rect.left < rect.width / 2;
-      goTo(isLeftHalf ? -1 : 1);
-    });
+      const nextIsLeftSide = clientX - rect.left < rect.width / 2;
+      if (nextIsLeftSide === isLeftSide) return;
+      isLeftSide = nextIsLeftSide;
+      if (drag?.committed) return; // the drag icon owns the display for now
+      prevIcon?.classList.toggle("is-active", isLeftSide);
+      nextIcon?.classList.toggle("is-active", !isLeftSide);
+    }
+
+    function setDragIconActive(active) {
+      dragIcon?.classList.toggle("is-active", active);
+      if (active) {
+        prevIcon?.classList.remove("is-active");
+        nextIcon?.classList.remove("is-active");
+      }
+    }
 
     if (cursorNav) {
-      const prevIcon = cursorNav.querySelector(".cursor-nav__icon--prev");
-      const nextIcon = cursorNav.querySelector(".cursor-nav__icon--next");
-      let isLeftSide = null;
-
-      function updateSide(clientX) {
-        const rect = section.getBoundingClientRect();
-        const nextIsLeftSide = clientX - rect.left < rect.width / 2;
-        if (nextIsLeftSide === isLeftSide) return;
-        isLeftSide = nextIsLeftSide;
-        prevIcon.classList.toggle("is-active", isLeftSide);
-        nextIcon.classList.toggle("is-active", !isLeftSide);
-      }
-
       section.addEventListener("pointerenter", (event) => {
         if (event.pointerType !== "mouse") return;
         section.classList.add("is-cursor-nav");
@@ -155,7 +202,7 @@
       section.addEventListener("pointermove", (event) => {
         if (event.pointerType !== "mouse") return;
         cursorNav.style.transform = `translate3d(${event.clientX}px, ${event.clientY}px, 0)`;
-        updateSide(event.clientX);
+        if (!drag?.committed) updateSide(event.clientX);
       });
 
       section.addEventListener("pointerleave", (event) => {
@@ -164,20 +211,83 @@
         cursorNav.classList.remove("is-visible", "is-pressed");
         isLeftSide = null;
       });
-
-      section.addEventListener("pointerdown", (event) => {
-        if (event.pointerType !== "mouse") return;
-        cursorNav.classList.add("is-pressed");
-      });
-
-      ["pointerup", "pointerleave"].forEach((type) => {
-        section.addEventListener(type, () => cursorNav.classList.remove("is-pressed"));
-      });
     }
+
+    section.addEventListener("pointerdown", (event) => {
+      if (event.pointerType !== "mouse" || isAnimating) return;
+      cursorNav?.classList.add("is-pressed");
+      drag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        baseX: computeX(),
+        committed: false,
+      };
+    });
+
+    section.addEventListener("pointermove", (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const deltaX = event.clientX - drag.startX;
+
+      if (!drag.committed) {
+        if (Math.abs(deltaX) < DRAG_THRESHOLD) return;
+        drag.committed = true;
+        track.style.transition = "none";
+        section.setPointerCapture(event.pointerId);
+        setDragIconActive(true);
+      }
+
+      // never drag further than the clone padding actually covers
+      const maxDelta = Math.max(0, bufferCount * itemStep - 1);
+      const clamped = Math.max(-maxDelta, Math.min(maxDelta, deltaX));
+      track.style.transform = `translate3d(${drag.baseX + clamped}px, 0, 0)`;
+    });
+
+    function endDrag(event) {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const { committed, startX } = drag;
+      const deltaX = event.clientX - startX;
+      drag = null;
+      cursorNav?.classList.remove("is-pressed");
+
+      if (!committed) {
+        // no real movement: treat it as a click, navigate by side
+        const rect = section.getBoundingClientRect();
+        const isLeftHalf = event.clientX - rect.left < rect.width / 2;
+        goTo(isLeftHalf ? -1 : 1);
+        return;
+      }
+
+      setDragIconActive(false);
+      // setDragIconActive stripped prev/next's is-active without telling
+      // isLeftSide, so updateSide would see "no change" and skip re-applying
+      // it — force a resync
+      isLeftSide = null;
+      updateSide(event.clientX);
+
+      if (Math.abs(deltaX) > itemWidth * SNAP_THRESHOLD_RATIO) {
+        goTo(deltaX < 0 ? 1 : -1);
+      } else {
+        isAnimating = true;
+        setPosition(true);
+      }
+    }
+
+    section.addEventListener("pointerup", endDrag);
+    section.addEventListener("pointercancel", (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const wasCommitted = drag.committed;
+      drag = null;
+      cursorNav?.classList.remove("is-pressed");
+      if (wasCommitted) {
+        setDragIconActive(false);
+        isLeftSide = null;
+        updateSide(event.clientX);
+        isAnimating = true;
+        setPosition(true);
+      }
+    });
   } else {
     // touch: drag the track directly, snapping to the nearest slide on release
-    const DRAG_THRESHOLD = 6;
-    const SNAP_THRESHOLD_RATIO = 0.15;
     let drag = null;
 
     section.style.touchAction = "pan-y";
