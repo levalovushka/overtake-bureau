@@ -186,11 +186,11 @@ img {
 
   .cta-wrapper {
     position: absolute;
-    bottom: 14px;
-    left: 14px;
+    bottom: 8px;
     right: 14px;
     width: auto;
     margin-top: 0;
+    align-items: end;
   }
 
   .cta {
