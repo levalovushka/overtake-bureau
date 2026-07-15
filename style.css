@@ -152,6 +152,7 @@ img {
 }
 
 .cta {
+  display: inline-block;
   width: max-content;
   padding: 0.5rem 0.9rem;
   border: none;
@@ -161,6 +162,7 @@ img {
   font: inherit;
   font-size: 1rem;
   line-height: 1.5rem;
+  text-decoration: none;
   cursor: pointer;
   transition: opacity 0.2s ease;
 }
