@@ -35,7 +35,6 @@
   --case-height: clamp(15rem, -1.917rem + 38.33vh, 22.5rem);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
-  --slide-duration: 550ms;
 }
 
 *,
@@ -92,6 +91,13 @@ img {
   overflow-x: hidden;
   overflow-y: visible;
   margin-top: 2.5rem;
+  /* horizontal swipes belong to the slider, vertical pans stay native */
+  touch-action: pan-y;
+}
+
+.cases:focus-visible {
+  outline: none;
+  outline-offset: -2px;
 }
 
 .cases.is-cursor-nav {
