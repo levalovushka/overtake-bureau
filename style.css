@@ -32,7 +32,7 @@
      on genuinely tall viewports. interpolated between 700px and 1000px vh. */
   --space-page-top: clamp(2.75rem, -2.75rem + 12.67vh, 5.25rem);
 
-  --case-height: clamp(15rem, -1.917rem + 38.33vh, 22.5rem);
+  --case-height: clamp(17rem, 0.083rem + 38.33vh, 24.5rem);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -50,6 +50,10 @@ body {
   font: var(--font-weight) var(--font-size)/var(--line-height) var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: rgba(140, 143, 153, 0.20);
 }
 
 img {
@@ -125,7 +129,7 @@ img {
   display: block;
   overflow: hidden;
   height: var(--case-height);
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   corner-shape: squircle;
   background: #f2f2f2;
 }
@@ -262,7 +266,9 @@ img {
   transform: translate(-50%, -50%) scale(0.85);
   transition:
     opacity 220ms ease,
-    transform 220ms var(--ease-out);
+    transform 220ms var(--ease-out),
+    width 320ms var(--ease-out),
+    border-radius 320ms var(--ease-out);
 }
 
 .cursor-nav.is-visible .cursor-nav__bubble {
@@ -272,6 +278,11 @@ img {
 
 .cursor-nav.is-pressed .cursor-nav__bubble {
   transform: translate(-50%, -50%) scale(0.9);
+}
+
+.cursor-nav.is-dragging .cursor-nav__bubble {
+  width: 3.5rem;
+  border-radius: 999px;
 }
 
 .cursor-nav__icon {
@@ -295,9 +306,61 @@ img {
   transform: scale(1);
 }
 
+/* ---- morphing arrow: single ⇄ double ----
+   built from live parts instead of one baked path, so the double-headed
+   arrow can grow out of the single one: the tail (a rect — its x/width are
+   animatable geometry) stretches, and the second head sprouts from its very
+   tip. the head is two arm lines revealed by a stroke-dash draw-on: their
+   shared origin rides exactly on the tail's advancing end, and the whiskers
+   extend from that point along the 45° diagonals — growing out of the tail
+   rather than unfolding beside it. everything shares the bubble's 320ms
+   curve so the icon, tail and heads travel as one gesture. */
+
+.arrow {
+  overflow: visible;
+}
+
+.arrow__tail {
+  transition: x 320ms var(--ease-out), width 320ms var(--ease-out);
+}
+
+.arrow__head,
+.arrow__grow {
+  transition: transform 320ms var(--ease-out);
+}
+
+/* arm length is 7.41; the long gap keeps the repeating dash pattern from
+   leaking a second dash onto the far end of the line, and the rest offset
+   sits just past the dash so not even its round cap renders */
+.arrow__arm {
+  stroke-dasharray: 7.42 100;
+  stroke-dashoffset: 7.44;
+  transition: stroke-dashoffset 320ms var(--ease-out);
+}
+
+/* dragging: tail runs edge to edge, both heads land on the far tips —
+   both side icons converge on the same symmetric double arrow */
+.cursor-nav.is-dragging .cursor-nav__icon.is-active .arrow__tail {
+  x: 0.5px;
+  width: 23px;
+}
+
+.cursor-nav.is-dragging .cursor-nav__icon--prev.is-active .arrow__head { transform: translateX(-4.75px); }
+.cursor-nav.is-dragging .cursor-nav__icon--next.is-active .arrow__head { transform: translateX(3.75px); }
+.cursor-nav.is-dragging .cursor-nav__icon--prev.is-active .arrow__grow { transform: translateX(3.75px); }
+.cursor-nav.is-dragging .cursor-nav__icon--next.is-active .arrow__grow { transform: translateX(-4.75px); }
+
+.cursor-nav.is-dragging .cursor-nav__icon.is-active .arrow__arm {
+  stroke-dashoffset: 0;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .cursor-nav__bubble,
-  .cursor-nav__icon {
+  .cursor-nav__icon,
+  .arrow__tail,
+  .arrow__head,
+  .arrow__grow,
+  .arrow__arm {
     transition-duration: 1ms;
   }
 }

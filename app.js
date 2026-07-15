@@ -18,10 +18,10 @@
   // critically damped spring: no scripted duration, motion emerges from the
   // live position + velocity, so it can be retargeted or grabbed at any frame.
   // omega 16 settles visually in ~450ms from rest — close to the old ease-out
-  const SPRING_OMEGA = 16;
+  const SPRING_OMEGA = 13;
   // momentum projection (Apple's exponential-decay form, iOS scroll default):
   // a flick coasts as if decelerating 0.998/ms, i.e. velocity * ~0.5s further
-  const PROJECTION = 0.998 / (1 - 0.998) / 1000;
+  const PROJECTION = 0.996 / (1 - 0.996) / 1000;
   const VELOCITY_WINDOW = 100; // ms of pointer history used for release velocity
   const RELEASE_STALL = 80; // holding still this long before release kills momentum
   const MAX_FLICK = count; // one full loop per gesture is plenty
@@ -205,7 +205,7 @@
     if (drag) {
       drag = null;
       cursorNav?.classList.remove("is-pressed");
-      setDragIconActive(false);
+      setDragging(false);
     }
     pos = target = mod(Math.round(target), count);
     velocity = 0;
@@ -237,7 +237,6 @@
 
   const prevIcon = cursorNav?.querySelector(".cursor-nav__icon--prev");
   const nextIcon = cursorNav?.querySelector(".cursor-nav__icon--next");
-  const dragIcon = cursorNav?.querySelector(".cursor-nav__icon--drag");
   let isLeftSide = null;
 
   function updateSide(clientX) {
@@ -245,17 +244,17 @@
     const nextIsLeftSide = clientX - rect.left < rect.width / 2;
     if (nextIsLeftSide === isLeftSide) return;
     isLeftSide = nextIsLeftSide;
-    if (drag?.committed) return; // the drag icon owns the display for now
+    if (drag?.committed) return; // the morphed double arrow owns the display for now
     prevIcon?.classList.toggle("is-active", isLeftSide);
     nextIcon?.classList.toggle("is-active", !isLeftSide);
   }
 
-  function setDragIconActive(active) {
-    dragIcon?.classList.toggle("is-active", active);
-    if (active) {
-      prevIcon?.classList.remove("is-active");
-      nextIcon?.classList.remove("is-active");
-    }
+  // there is no separate drag icon: the active single arrow morphs into the
+  // double-headed one (see the .is-dragging rules in CSS). either side icon
+  // converges on the same symmetric shape, so which one is active when the
+  // drag commits doesn't matter
+  function setDragging(active) {
+    cursorNav?.classList.toggle("is-dragging", active);
   }
 
   if (canHover && cursorNav) {
@@ -336,8 +335,15 @@
       drag.basePos = pos;
       drag.startPos = pos;
       velocity = 0;
-      section.setPointerCapture(event.pointerId);
-      if (drag.mouse) setDragIconActive(true);
+      // explicit capture keeps a mouse drag alive outside the section; iOS
+      // Safari can refuse it for touch pointers (NotFoundError), which is
+      // harmless — touch is already implicitly captured to the pointerdown
+      // target, and those events bubble up here. an uncaught throw, though,
+      // would abort the commit before startLoop and freeze the track
+      try {
+        section.setPointerCapture(event.pointerId);
+      } catch {}
+      if (drag.mouse) setDragging(true);
       startLoop(); // physics is paused while committed; the loop just renders
     }
 
@@ -375,10 +381,9 @@
     }
 
     if (ended.mouse) {
-      setDragIconActive(false);
-      // setDragIconActive stripped prev/next's is-active without telling
-      // isLeftSide, so updateSide would see "no change" and skip re-applying
-      // it — force a resync
+      setDragging(false);
+      // side flips were suppressed while the double arrow owned the display,
+      // so isLeftSide may be stale — force a resync to the release point
       isLeftSide = null;
       updateSide(event.clientX);
     }
