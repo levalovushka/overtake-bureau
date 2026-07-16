@@ -251,7 +251,7 @@ img {
 
 @media (max-width: 37.5rem) {
   :root {
-    --line-height: calc(1.85rem - 2px);
+    --line-height: calc(1.85rem - 3px);
   }
 
   .page {
