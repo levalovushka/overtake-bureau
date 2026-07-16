@@ -25,7 +25,7 @@
   --color-text-secondary: #4a4b4f;
   --color-text-tertiary: #8c8f99;
   --color-cta-bg: #101010;
-  --color-cta-text: #fff;
+  --color-cta-text: #ffffff;
 
   --font-sans: "Pragmatica Next VF", system-ui, sans-serif;
 
@@ -48,6 +48,26 @@
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+
+::selection {
+  background: rgba(140, 143, 153, 0.20);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    --color-bg: #000;
+    --color-text-primary: #eceff7;
+    --color-text-secondary: #b9bac4;
+    --color-cta-bg: #eceff7;
+    --color-cta-text: #000;
+  }
+  ::selection {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
 *,
 *::before,
 *::after {
@@ -63,9 +83,6 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-::selection {
-  background: rgba(140, 143, 153, 0.20);
-}
 
 img {
   display: block;
@@ -269,10 +286,10 @@ img {
   width: 2.35rem;
   height: 2.35rem;
   border-radius: 50%;
-  background: rgba(0, 0, 0);
+  background: var(--color-cta-bg);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  color: #fff;
+  color: var(--color-cta-text);
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.85);
   transition:
@@ -292,7 +309,7 @@ img {
 }
 
 .cursor-nav.is-dragging .cursor-nav__bubble {
-  width: 3.5rem;
+  width: 4rem;
   border-radius: 999px;
 }
 
@@ -352,14 +369,14 @@ img {
 /* dragging: tail runs edge to edge, both heads land on the far tips —
    both side icons converge on the same symmetric double arrow */
 .cursor-nav.is-dragging .cursor-nav__icon.is-active .arrow__tail {
-  x: 0.5px;
-  width: 23px;
+  x: -3.5px;
+  width: 31px;
 }
 
-.cursor-nav.is-dragging .cursor-nav__icon--prev.is-active .arrow__head { transform: translateX(-4.75px); }
-.cursor-nav.is-dragging .cursor-nav__icon--next.is-active .arrow__head { transform: translateX(3.75px); }
-.cursor-nav.is-dragging .cursor-nav__icon--prev.is-active .arrow__grow { transform: translateX(3.75px); }
-.cursor-nav.is-dragging .cursor-nav__icon--next.is-active .arrow__grow { transform: translateX(-4.75px); }
+.cursor-nav.is-dragging .cursor-nav__icon--prev.is-active .arrow__head { transform: translateX(-8.75px); }
+.cursor-nav.is-dragging .cursor-nav__icon--next.is-active .arrow__head { transform: translateX(7.75px); }
+.cursor-nav.is-dragging .cursor-nav__icon--prev.is-active .arrow__grow { transform: translateX(7.75px); }
+.cursor-nav.is-dragging .cursor-nav__icon--next.is-active .arrow__grow { transform: translateX(-8.75px); }
 
 .cursor-nav.is-dragging .cursor-nav__icon.is-active .arrow__arm {
   stroke-dashoffset: 0;
