@@ -1,0 +1,21 @@
+# Security headers (Lighthouse best-practices: CSP, COOP, clickjacking).
+# CSP notes: data: is for the inline SVG favicon; JS only touches
+# style via CSSOM (element.style.transform), which CSP does not block,
+# so no 'unsafe-inline' is needed anywhere.
+/*
+  Content-Security-Policy: default-src 'self'; img-src 'self' data:; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
+  Cross-Origin-Opener-Policy: same-origin
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+# Fonts never change under the same filename — cache forever.
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Case media: cached a day, then served stale while revalidating in the
+# background — repeat visits on bad networks skip 5 revalidation round-trips.
+# If you replace a case under the same filename, rename it (case-1b.webp).
+/assets/*
+  Cache-Control: public, max-age=86400, stale-while-revalidate=2592000

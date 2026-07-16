@@ -17,17 +17,45 @@
   unicode-range: U+00AB, U+00BB, U+0401, U+0410-044F, U+0451, U+20BD;
 }
 
+/* metric-matched fallback: Arial scaled so it sets the same line breaks as
+   Pragmatica — the font arriving after first paint then causes no layout
+   shift (this was the whole CLS 0.25 on desktop). ratios are advance-width
+   sums of the page copy in both fonts, split per script like the real
+   subsets so mixed Russian text (Cyrillic words, Latin digits and spaces)
+   measures correctly. */
+@font-face {
+  font-family: "Pragmatica Next Fallback";
+  src: local("Arial"), local("Helvetica Neue");
+  size-adjust: 103.6%;
+  ascent-override: 91.69%;
+  descent-override: 24.13%;
+  line-gap-override: 0%;
+  unicode-range: U+0020-007E, U+00A0, U+2013-2014, U+2018-201B, U+2026;
+}
+
+@font-face {
+  font-family: "Pragmatica Next Fallback";
+  src: local("Arial"), local("Helvetica Neue");
+  size-adjust: 104.2%;
+  ascent-override: 91.17%;
+  descent-override: 23.99%;
+  line-gap-override: 0%;
+  unicode-range: U+00AB, U+00BB, U+0401, U+0410-044F, U+0451, U+20BD;
+}
+
 :root {
   color-scheme: light;
 
   --color-bg: #fff;
   --color-text-primary: #101010;
   --color-text-secondary: #4a4b4f;
-  --color-text-tertiary: #8c8f99;
+  /* darkest step of the old #8c8f99 that still reads as the same gray while
+     clearing WCAG AA 4.5:1 on white (this one is 4.54:1) */
+  --color-text-tertiary: #73767f;
   --color-cta-bg: #101010;
   --color-cta-text: #ffffff;
 
-  --font-sans: "Pragmatica Next VF", system-ui, sans-serif;
+  --font-sans: "Pragmatica Next VF", "Pragmatica Next Fallback", system-ui, sans-serif;
 
   /* one text style, used everywhere */
   --font-size: 1.125rem;
@@ -60,6 +88,7 @@
     --color-bg: #000;
     --color-text-primary: #eceff7;
     --color-text-secondary: #b9bac4;
+    --color-text-tertiary: #8c8f99; /* 6.5:1 on black — unchanged */
     --color-cta-bg: #eceff7;
     --color-cta-text: #000;
   }
@@ -76,13 +105,11 @@
 }
 
 body {
-  margin: 0;
   background: var(--color-bg);
   font: var(--font-weight) var(--font-size)/var(--line-height) var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
-
 
 img {
   display: block;
@@ -106,12 +133,9 @@ img {
   width: var(--content-width);
 }
 
-.hero__title,
-.hero__subtitle {
-  margin: 0;
-}
-
 .hero__title {
+  /* an h1 semantically, but typographically the same single text style */
+  font: inherit;
   color: var(--color-text-primary);
 }
 
@@ -120,15 +144,14 @@ img {
 }
 
 .cases {
-  overflow-x: hidden;
-  overflow-y: visible;
+  overflow: hidden;
   margin-top: 2.5rem;
   /* horizontal swipes belong to the slider, vertical pans stay native */
   touch-action: pan-y;
 }
 
 .cases:focus-visible {
-  outline: none;
+  outline: 2px solid var(--color-text-primary);
   outline-offset: -2px;
 }
 
@@ -144,6 +167,11 @@ img {
   padding: 0;
   will-change: transform;
   user-select: none;
+  /* first paint, before app.js runs: center the 3rd slide — the same state
+     the JS lands on. same formula as render(): column left edge minus two
+     item steps. this makes the eagerly-loaded slide the LCP element, and is
+     the resting state if JS never arrives. JS overrides via inline style. */
+  transform: translate3d(calc((100vw - var(--content-width)) / 2 - 2 * (var(--content-width) + 14px)), 0, 0);
 }
 
 .cases__item {
@@ -193,15 +221,12 @@ img {
   display: inline-block;
   width: max-content;
   padding: 0.5rem 0.9rem;
-  border: none;
   border-radius: 999px;
   background: var(--color-cta-bg);
   color: var(--color-cta-text);
-  font: inherit;
   font-size: 1rem;
   line-height: 1.5rem;
   text-decoration: none;
-  cursor: pointer;
   transition: opacity 0.2s ease;
 }
 
@@ -226,6 +251,8 @@ img {
 
   .page {
     position: relative;
+    justify-content: start;
+    padding-top: 1rem;
   }
 
   .cta-wrapper {
@@ -244,15 +271,18 @@ img {
     height: 52px;
     padding: 0.45rem 1.5rem;
   }
+
   .cases {
     margin-top: 1.5rem;
   }
-  .pitch {
-    margin-top: 1.5rem;
+
+  .cases__track {
+    /* mobile item step is (content-width − 24px) + 14px gap */
+    transform: translate3d(calc((100vw - var(--content-width)) / 2 - 2 * (var(--content-width) - 10px)), 0, 0);
   }
+
   .cases__item {
     width: calc(var(--content-width) - 24px);
-    height: calc(var(--content-width) - 24px);
   }
 
   .case__frame {
@@ -260,12 +290,8 @@ img {
     border-radius: 1rem;
   }
 
-  .page {
-    display: flex;
-    flex-direction: column;
-    height: 100svh;
-    justify-content: start;
-    padding-top: 1rem;
+  .pitch {
+    margin-top: 1.5rem;
   }
 }
 
