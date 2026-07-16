@@ -1,0 +1,82 @@
+# CLAUDE.md — инструкция для агента
+
+Это статический лендинг без сборки (`index.html` / `ru/index.html` / `style.css` / `app.js`). Полная документация проекта — в `README.md`, её стоит прочитать перед нетривиальными правками. Ниже — только то, что нужно для основной задачи: **добавлять и заменять кейсы в слайдере**.
+
+## Золотые правила
+
+1. **Никогда не пушь в `main` напрямую.** Работай в отдельной ветке и открывай Pull Request — Netlify соберёт превью-ссылку на каждый PR, прод обновится только после мержа.
+2. **Правь ОБЕ языковые версии:** `index.html` (английская) и `ru/index.html` (русская). Автосинхронизации нет. Различаются только тексты и `alt`; список кейсов и пути к медиа должны совпадать один в один.
+3. **Медиа сначала сжимай, потом добавляй.** Сырые исходники клади в `assets/new cases/` (эта папка в `.gitignore`, в репозиторий не попадает), а в разметку идут только сжатые файлы `assets/case-N.webp`.
+4. **Минимализм.** Не добавляй зависимости, сборщики, вторую типографику или лишние DOM-узлы. Если правка тянет за собой инфраструктуру — остановись и спроси владельца.
+
+## Как добавить или заменить кейс
+
+### 1. Ветка
+```bash
+git checkout main && git pull
+git checkout -b case/<короткое-имя>
+```
+
+### 2. Сжать медиа
+Инструменты: `cwebp` (`brew install webp`) и `ffmpeg` (`brew install ffmpeg`).
+
+Картинка → webp (кладём результат в `assets/`, следующий свободный номер `case-N`):
+```bash
+cwebp -q 82 -m 6 "assets/new cases/исходник.png" -o assets/case-N.webp
+```
+
+Видео (если кейс — короткий 3–5 сек ролик) → mp4, по рецепту из раздела «Медиа кейсов» в `README.md`:
+```bash
+ffmpeg -i "assets/new cases/исходник.mp4" \
+  -an -vf "scale='min(1200,iw)':-2" \
+  -c:v libx264 -profile:v high -preset slow -crf 28 -pix_fmt yuv420p \
+  -movflags +faststart \
+  assets/case-N.mp4
+```
+Ориентир по весу: картинка < ~100 KB, видео 150–350 KB. Узнать реальные размеры файла (для атрибутов `width`/`height`): `sips -g pixelWidth -g pixelHeight assets/case-N.webp`.
+
+### 3. Добавить слайд в разметку
+Каждый кейс — это `<li>` внутри `<ul class="cases__track">`, и в `index.html`, и в `ru/index.html`. Картинка:
+```html
+<li class="cases__item">
+  <span class="case__frame">
+    <img class="case__image" src="/assets/case-N.webp" width="ШИРИНА" height="ВЫСОТА" alt="Название" loading="lazy" decoding="async">
+  </span>
+</li>
+```
+Видео — та же карточка, но `<video>` вместо `<img>` (все четыре атрибута обязательны):
+```html
+<li class="cases__item">
+  <span class="case__frame">
+    <video class="case__image" src="/assets/case-N.mp4" width="ШИРИНА" height="ВЫСОТА" autoplay muted loop playsinline preload="auto"></video>
+  </span>
+</li>
+```
+Пути всегда абсолютные (`/assets/...`) — HTML в `ru/` лежит в подпапке, относительные пути указывали бы не туда.
+
+### 4. Расставить `loading` / `fetchpriority` по видимости
+Слайдер стартует не с первого слайда, а с центрального (`startRealIndex = floor(count/2)` в `app.js`), его левый край прижат к колонке, справа виден краешек следующего. Значит в первом кадре реально видны только два слайда:
+- **стартовый слайд** (центральный по счёту) → `loading="eager" fetchpriority="high"` (это LCP);
+- **следующий за ним** (peek справа) → `loading="eager"` без `fetchpriority`;
+- **все остальные** → `loading="lazy"`.
+- `decoding="async"` — на всех картинках.
+
+Если добавляешь/убираешь кейсы и меняется, какой слайд стартовый, — пересчитай эти атрибуты. Не оставляй два `fetchpriority="high"`.
+
+### 5. Проверить локально и открыть PR
+```bash
+python3 -m http.server 8000   # открыть http://localhost:8000 и http://localhost:8000/ru/
+```
+Проверь: слайдер листается, картинки грузятся, кейсы и их порядок одинаковы в обеих версиях. Затем:
+```bash
+git add -A
+git commit -m "Add <название> case."
+git push -u origin HEAD
+```
+Открой Pull Request на GitHub, дождись Netlify-превью (`deploy-preview-*.netlify.app`), проверь на превью. Мержит владелец.
+
+## Чего НЕ делать
+- Не пушить в `main`, не мержить свой PR без ведома владельца.
+- Не менять `app.js` / `style.css` / шрифты / `_redirects` / `_headers` ради добавления кейса — для картинки и видео это не нужно.
+- Не коммитить сырьё из `assets/new cases/` и файлы `.DS_Store`.
+- Не заводить новую типографику, колонку, зависимости или сборщик.
