@@ -3,7 +3,12 @@
   src: url("fonts/pragmatica-next-400.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  /* optional, not swap: the font is preloaded + tiny, so it almost always
+     arrives before first paint and is used from the start. if it misses the
+     short block window on a slow link, the metric-matched fallback stays for
+     the whole session — no mid-load swap, so no reflow of the vertically
+     centered page (that swap was the CLS 1.0 on /ru/). */
+  font-display: optional;
   unicode-range: U+0020-007E, U+00A0, U+2013-2014, U+2018-201B, U+2026;
 }
 
@@ -13,7 +18,7 @@
   src: url("fonts/pragmatica-next-400-cyrillic.woff2") format("woff2");
   font-weight: 400;
   font-style: normal;
-  font-display: swap;
+  font-display: optional;
   unicode-range: U+00AB, U+00BB, U+0401, U+0410-044F, U+0451, U+20BD;
 }
 
