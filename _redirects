@@ -1,0 +1,6 @@
+# Auto-serve the Russian version: browser language first, then GeoIP country.
+# Only the root redirects (Google's recommended pattern for auto-locale);
+# /ru/ is always reachable directly and via hreflang. 302 on purpose — never 301.
+# Escape hatch: setting an nf_lang cookie from JS overrides Netlify's detection.
+/  /ru/  302!  Language=ru,ru-ru
+/  /ru/  302!  Country=ru
